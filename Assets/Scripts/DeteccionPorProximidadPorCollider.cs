@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class DeteccionPorProximidadPorCollider : MonoBehaviour
@@ -23,17 +24,41 @@ public class DeteccionPorProximidadPorCollider : MonoBehaviour
     public GameObject gameObjectEjemplo;
 
     public bool imprimirMensajesDeDebug = true;
+
+    [SerializeField]
+    private List<GameObject> objetosConocidos = new List<GameObject>();
+    // public GameObject[] knownObjects = new GameObject[5]; // por flexibilidad y facilidad de uso,
+    // es mejor el List (array de tamaño dinámico) que un array normalito
+    
+    // List de Unity es en realidad un Array dinámico (de tamaño dinámico), que por ejemplo, en C++ se le conoce como "vector"
+    
+    // Para usar una Lista ligada en unity (Linked List), la clase que tienen que usar es: LinkedList<>
+    
     
     // ¿En código, cómo podemos obtener o usar un componente de nuestro gameObject?
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
+        
+        objetosConocidos.Add(gameObject);
+        foreach (var objeto in objetosConocidos)
+        {
+            Debug.Log(objeto.name + " está en los objetos conocidos");
+        }
+        
         // Función GetComponent obtiene un componente del tipo T del actor/GameObject que la mande a llamar.
         // Específicamente, me está dando el componente SphereCollider del dueño de este script.
         _colliderDeDeteccion = GetComponent<SphereCollider>();
-        if(imprimirMensajesDeDebug)
-            Debug.Log("radio del collider propio es: " + _colliderDeDeteccion.radius, gameObject);
+        if (_colliderDeDeteccion != null)
+        {
+            // sobreescribimos el radio que tuviera el collider en el editor por el que está en este script.
+            _colliderDeDeteccion.radius = rangoDeDeteccion;
+            
+            if(imprimirMensajesDeDebug)
+                Debug.Log("radio del collider propio es: " + _colliderDeDeteccion.radius, gameObject);
+        }
+        
 
         
         // Acá, me va a dar el SphereCollider que le pertenece a gameObjectEjemplo, porque él es quien está
@@ -90,6 +115,8 @@ public class DeteccionPorProximidadPorCollider : MonoBehaviour
     // nos importa es saber con quién (o qué tipo de objeto) estoy haciendo colisión
     private void OnCollisionEnter(Collision other) 
     {
+        // OnCollision son "con quién choqué y Cómo?"
+        
         // Cosas que aprendimos con solo tener este debug.log:
         // 1) al menos uno de los dos objetos que queremos que colisionen debe de tener un rigidBody
         // 2) el RigidBody NO debe de ser Kinemático
@@ -107,4 +134,19 @@ public class DeteccionPorProximidadPorCollider : MonoBehaviour
     
     
     // La clase que viene vamos a hablar sobre OnTriggerEnter/Exit, y por qué no usamos los Stay de estas funciones.
+    // OnTrigger son "con quién choqué?"
+    
+    // Nuestro sentido de visión no tendría por qué empujar a los objetos que quiere detectar, entonces usamos 
+    // OnTrigger Enter/Exit para ello, ya que los trigger no tienen respuesta física/simulada.
+    private void OnTriggerEnter(Collider other)
+    {
+        if(imprimirMensajesDeDebug)
+            Debug.Log("On Trigger enter contra: " + other.gameObject.name, gameObject);
+    }
+    
+    private void OnTriggerExit(Collider other)
+    {
+        if(imprimirMensajesDeDebug)
+            Debug.Log("On Trigger Exit contra: " + other.gameObject.name, gameObject);
+    }
 }
