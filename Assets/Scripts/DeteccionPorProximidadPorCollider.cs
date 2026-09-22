@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 public class DeteccionPorProximidadPorCollider : MonoBehaviour
@@ -123,6 +124,24 @@ public class DeteccionPorProximidadPorCollider : MonoBehaviour
         // 3) Para que se detecte bien bien bien la colisión, el que se debe de mover es el que trae el componente rigidBody.
         if(imprimirMensajesDeDebug)
             Debug.Log("On collision enter contra: " + other.gameObject.name, gameObject);
+
+        if (other.gameObject.layer == LayerMask.NameToLayer("Piso"))
+        {
+            Debug.Log("Toqué algo en la capa/layer piso", gameObject);
+        }
+        
+        if (other.gameObject.name.Contains("Plano") ||
+            other.gameObject.name == "Plano (1)")
+        {
+            // Estoy comenzando a tocar el piso
+            // y por ejemplo, ya puedo volver a saltar.
+            Debug.Log("Toqué el piso", gameObject);
+        }
+        else if (other.gameObject.name == "Ladron")
+        {
+            // Entonces toqué al ladrón y, por ejemplo, le hago daño o lo capturo o lo que sea.
+            Debug.Log("Toqué el ladrón", gameObject);
+        }
     }
     
     // se manda a llamar cuando deja de estar en contacto con un objeto con el que ya estaba en contacto.
@@ -130,6 +149,32 @@ public class DeteccionPorProximidadPorCollider : MonoBehaviour
     {
         if(imprimirMensajesDeDebug)
             Debug.Log("On collision exit contra: " + other.gameObject.name, gameObject);
+        
+        // Tenemos 32 capas/layers disponibles porque son los 32 bits de un entero
+        
+        // La layer "Piso" es el elemento [6], entonces se ve de la siguiente manera:
+        // 00000000 00000000 00000000 01000000
+        
+        if (other.gameObject.layer == LayerMask.NameToLayer("Piso"))
+        {
+            Debug.Log("Dejé de tocar algo en la capa/layer piso", gameObject);
+            
+            // 
+        }
+        
+        // Si estoy dejando de tocar el piso
+        if (other.gameObject.name == "Plano" ||
+            other.gameObject.name == "Plano (1)")
+        {
+            // Entonces desactivo el brinco porque ya no hay piso del cual brincar
+            Debug.Log("Dejé de tocar el piso", gameObject);
+        }
+        else if (other.gameObject.name == "Ladron")
+        {
+            // Entonces dejé de tocar al ladrón y, por ejemplo, le dejo de hacer daño o
+            // imprimo un mensaje de que se escapó o lo que sea.
+            Debug.Log("Dejé de tocar al ladrón", gameObject);
+        }
     }
     
     
