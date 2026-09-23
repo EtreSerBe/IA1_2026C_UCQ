@@ -1803,7 +1803,6 @@ MonoBehaviour:
   maximaVelocidad: 1
   maximaFuerza: 5
   masa: 1
-  tiempoParaCambiarEntreSeekYFlee: 2
 --- !u!114 &1600857820
 MonoBehaviour:
   m_ObjectHideFlags: 0

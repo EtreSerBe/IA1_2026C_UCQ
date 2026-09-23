@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+// Forza a que en el gameObject que tiene este script se tenga un SphereCollider component
+[RequireComponent(typeof(SphereCollider))]
 public class SentidoDeVision : MonoBehaviour
 {
     [SerializeField]
