@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
+using Unity.VisualScripting;
 using UnityEngine;
 
 // Para más explicaciones sobre corrutinas, este video está cortito y muy útil:
@@ -16,7 +17,7 @@ public class EnemigoAlternante : EnemigoBase
     private Coroutine _coroutineImprimirCada5SegundosHastaQueMeDetengan;
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    new void Start()
     {
         // base.Start quiere decir: Haz TODO lo que hace la función de la clase padre
         base.Start();
@@ -70,8 +71,10 @@ public class EnemigoAlternante : EnemigoBase
             
             ActualizarAceleracionVelocidadYPosicion(steeringForce);
         }
-
-
+        else // Nos faltaba el otro lado de la moneda: cuando ya no ves a nadie, entonces ya no tienes objetivo!
+        {
+            Objetivo = null;
+        }
 
     }
     
@@ -130,5 +133,16 @@ public class EnemigoAlternante : EnemigoBase
             _estaUsandoSeek = !_estaUsandoSeek; // invertimos el valor
             _tiempoTranscurrido = 0.0f; // reseteamos este para esperar otros X segundos.
         }
+    }
+
+    protected new void OnDrawGizmos()
+    {
+        if (_estaUsandoSeek)
+            Gizmos.color = Color.red;
+        else
+            Gizmos.color = Color.yellow;
+        
+        
+        base.OnDrawGizmos();
     }
 }

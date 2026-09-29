@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using UnityEngine;
+using UnityEngine.LowLevelPhysics2D;
 using Vector3 = UnityEngine.Vector3;
 
 
@@ -45,7 +46,7 @@ public class EnemigoBase : MonoBehaviour
     protected SentidoDeVision SentidoDeVision;
     protected GameObject Objetivo;
 
-
+    protected int myInt = 0;
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     protected void Start()
@@ -95,7 +96,11 @@ public class EnemigoBase : MonoBehaviour
             // transform.position += direccionDeseada * (Time.deltaTime * maximaVelocidad);
             // Debug.Log("El transform.position que va aumentando cada cuadro es: " + transform.position); 
         }
-
+        else // Nos faltaba el otro lado de la moneda: cuando ya no ves a nadie, entonces ya no tienes objetivo!
+        {
+            Objetivo = null;
+        }
+        
 
         // AplicarGravedad();
     }
@@ -154,5 +159,57 @@ public class EnemigoBase : MonoBehaviour
         Debug.Log($"Aceleración es: {direccionDeGravedad*magnitudDeGravedad}, " +
                   $"velocidad es: {VelocidadActual}, posición es: {transform.position}" );
 
+    }
+
+
+    // Siempre que se esté viendo la vista de Scene, se va a mandar a llamar esta función Y se tiene que actualizar
+    // algo en dicha pestaña, por ejemplo, se tiene que redibujar porque moviste el mouse o la vista.
+    // Se ejecuta aunque NO esté en modo play, y nos sirven mucho para acomodar cosas en escena, debuggear, etc.
+    protected void OnDrawGizmos()
+    {
+        // Gizmos.DrawLine();
+        // Objetivo
+        // Debug.Log("se está viendo la pestaña de Scene");
+        
+        // Que solo me dibuje esa línea si sí hay un Objetivo.
+        if(Objetivo != null)
+            Gizmos.DrawLine(transform.position, Objetivo.transform.position);
+        
+        // myInt++;
+        // Debug.Log("myInt= " + myInt);
+        //
+        // myInt -= 2;
+        // Debug.Log("myInt= " + myInt);
+        //
+        // myInt = FuncionEjemplo(myInt); // función que le suma 3
+        // Debug.Log("myInt= " + myInt);
+    }
+
+    int FuncionEjemplo(int miEntero)
+    {
+        return miEntero + 3;
+    }
+
+    // breakpoint, es decir, un punto de pausa. Es más bien un break de "tomarse un break".
+    // Qué es lo que se va a pausar? pues la ejecución del programa TODA la ejecución del programa.
+    // Para usarlos, solo hay que dar click izquierdo en el número de línea en el IDE cuando salga el circulito rojo.
+    // Una vez puesto, hay que presionar: Attach to Unity Editor (en el bichito verde) y ahora sí, ir a Unity y
+    // usar el proyecto/juego y hacer lo necesario para que se ejecute la línea de código donde está el breakpoint.
+    // Cada vez que se ejecute dicha línea, el programa entero se detiene ahí, y podemos ver el estado y valores
+    // de las variables disponibles en ese momento (en ese contexto).
+    
+    // Para continuar la ejecución después de un breakpoint, usa el botón de Continuar/Resume (botón verde de play en
+    // el IDE, generalmente), o la tecla F10.
+    // Para ir a la siguiente línea de código, usa F12.
+    // Para entrar a la siguiente instrucción, por ejemplo, a la ejecución dentro de una función, usa F11,
+    
+    // Para desactivar un breakpoint, solo es necesario hacer click izquierdo sobre él otra vez, o click derecho y
+    // deshabilitarlo, o presionar el botón rojo de Stop en el IDE (esta opción deshabilita todos los demás breakpoints
+    // también, hasta que se vuelva a presionar el Attach to Unity Editor otra vez).
+    
+    // Es lo mismo que OnDrawGizmos, pero solo cuando el GameObject que tiene este script está seleccionado en el editor.
+    protected void OnDrawGizmosSelected()
+    {
+        // Debug.Log("se está viendo la pestaña de Scene y este GameObject está seleccionado", gameObject);
     }
 }

@@ -8,7 +8,9 @@ public class EnemigoPesado : EnemigoBase
     
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    // La palabra clave "new" en la declaración de una función, especifica que se está sobreescribe la función de 
+    // la clase padre y usa esta nueva definición.
+    new void Start()
     {
         
     }
@@ -46,5 +48,10 @@ public class EnemigoPesado : EnemigoBase
         
             // transform.position += direccionDeseada * (Time.deltaTime * maximaVelocidad);
             // Debug.Log("El transform.position que va aumentando cada cuadro es: " + transform.position); 
-        }    }
+        }    
+        else // Nos faltaba el otro lado de la moneda: cuando ya no ves a nadie, entonces ya no tienes objetivo!
+        {
+            Objetivo = null;
+        }
+    }
 }
