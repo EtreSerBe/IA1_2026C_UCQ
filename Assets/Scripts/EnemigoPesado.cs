@@ -18,6 +18,7 @@ public class EnemigoPesado : EnemigoBase
     // Update is called once per frame
     void Update()
     {
+        
         /* EJEMPLO
         // función de enojado
         // le suben la velocidad y la aceleración o algo así

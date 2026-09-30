@@ -9,6 +9,8 @@ using Vector3 = UnityEngine.Vector3;
 [RequireComponent(typeof(SphereCollider), typeof(SentidoDeVision))]
 public class EnemigoBase : MonoBehaviour
 {
+    [Header("Steering Behaviour")]
+
     [Tooltip("Límite de velocidad al cual puede ir este agente")]
     [SerializeField] protected float maximaVelocidad = 5.0f; 
 
@@ -22,14 +24,18 @@ public class EnemigoBase : MonoBehaviour
     [SerializeField] protected float masa = 1.0f; // Masa del objeto, afecta qué tanto cambian su aceleración las fuerzas. 
 
 
-    protected int Vida = 5;
+    [Header("Propiedades de Combate")]
+    
+    [SerializeField] protected int Vida = 5;
     
     // Si hacen (o reciben) daño por contacto, entonces deben ser capaces de detectar contacto.
-    protected int DanioDeContacto = 1;
+    [SerializeField] protected int DanioDeContacto = 1;
+    
     // Es el collider que representa el "cuerpo" de este enemigo. Es decir, si este collider hace contacto 
     // con el player entonces le hace daño; si el arma del player entra en contacto contigo entonces te hace daño; etc. 
-    protected Collider ColliderPropio;
+    [SerializeField] protected Collider ColliderPropio;
     
+    // [SerializeField] protected Collider ColliderDeLaEspada;
     
     // // variable1 hace tal
     // private int variable1;
@@ -59,12 +65,20 @@ public class EnemigoBase : MonoBehaviour
         }
 
         // Siempre siempre siempre checar que el componente obtenido tras un GetComponent no sea null.
-        ColliderPropio = GetComponent<Collider>();
+        // ColliderPropio = GetComponent<Collider>();
+        // Este tiene que ser puesto manualmente en el editor, por seguridad (por ahora, para no hacernos bolas).
         if (ColliderPropio == null)
         {
             Debug.LogError("No hay componente Collider asignado a colliderPropio", gameObject);
         }
         
+        // obtener el capsule collider de la espada
+        // ColliderDeLaEspada = GetComponentInChildren<CapsuleCollider>();
+        // if (ColliderDeLaEspada == null)
+        // {
+        //     Debug.LogError("No hay componente Collider asignado a ColliderDeLaEspada", gameObject);
+        // }
+
         // TryGetComponent()
 
     }
@@ -85,6 +99,23 @@ public class EnemigoBase : MonoBehaviour
             // Documento original de los steering behaviors: https://www.red3d.com/cwr/papers/1999/gdc99steer.pdf
 
             Vector3 steeringForce = Seek();
+            
+            // Ahora le va a sumar a esa steering force la fuerza del ObstacleAvoidance de todos los obstáculos que conozca
+            List<GameObject> obstaculosConocidos = SentidoDeVision.GetObstaculosConocidos();
+            foreach (var obstaculo in obstaculosConocidos)
+            {
+                // Multiplica esa fuerza del flee por qué tan lejos está este enemigo de dicho obstáculo en proporción
+                // al tamaño del rango de detección.
+                // Si la distancia entre el obstáculo y este enemigo es mayor o igual que el rango de detección,
+                // entonces ese flee se multiplica por 0.
+                // Esto es un clásico caso de Interpolación Lineal
+                float porcentaje = Mathf.Lerp(0, 1.0f,
+                    1.0f - Vector3.Distance(transform.position,
+                        obstaculo.transform.position) / SentidoDeVision.GetRadioDeColliderDeDeteccion());
+                steeringForce += Flee(obstaculo.transform.position) * porcentaje;
+            }
+            // NOTA: para obstacle avoidance, prefieran los obstáculos redondeados, como cápsulas, cilindros o esferas, 
+            // para que se vea más suave y se atore menos.
             
             ActualizarAceleracionVelocidadYPosicion(steeringForce);
             
@@ -108,6 +139,12 @@ public class EnemigoBase : MonoBehaviour
     protected Vector3 Flee()
     {
         return SteeringBehaviors.Flee(Objetivo.transform.position, transform.position,
+            maximaVelocidad, VelocidadActual, maximaFuerza);
+    }
+    
+    protected Vector3 Flee(Vector3 position)
+    {
+        return SteeringBehaviors.Flee(position, transform.position,
             maximaVelocidad, VelocidadActual, maximaFuerza);
     }
     
@@ -159,6 +196,33 @@ public class EnemigoBase : MonoBehaviour
         Debug.Log($"Aceleración es: {direccionDeGravedad*magnitudDeGravedad}, " +
                   $"velocidad es: {VelocidadActual}, posición es: {transform.position}" );
 
+    }
+
+
+    // Esto ya hace que todas las clases que sean EnemigoBase o hereden de ella, pierdan 1 de vida cuando entren en 
+    // contacto con algo en la capa de "AtaqueDeJugador".
+    protected void OnCollisionEnter(Collision other)
+    {
+        // Debug.Log("OnCollisionEnter", gameObject);
+
+        // Checar contra quién estamos colisionando:
+        // Si chocamos contra algo que está en la capa de AtaqueDeJugador, entonces yo como enemigo recibo daño.
+        if (other.gameObject.layer == LayerMask.NameToLayer("AtaqueDeJugador"))
+        {
+            // entonces yo como enemigo recibo daño. Cuando recibo daño me bajan vida, entonces bajo mi vida actual.
+            Vida--; // por ahora, cualquier contacto con un ataque del jugador baja 1 de vida.
+            Debug.Log("colisioné con un ataque de jugador, y ahora mi vida actual es: " + Vida, gameObject);
+            
+            // Si la vida llega a 0 o menos, entonces este enemigo muere
+            if (Vida <= 0)
+            {
+                Debug.Log("Vida llegó a 0, este enemigo va a morir: " + gameObject.name, gameObject);
+                
+                // No pongo el destroy de una vez porque ustedes pueden poner una animación de morir, o un VFX, etc.
+                // A veces no lo vas a querer destruir, solo "despawnearlo" y mandarlo a un Pool.
+                // Destroy(gameObject);
+            }
+        }
     }
 
 

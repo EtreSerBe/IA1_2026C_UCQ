@@ -15,11 +15,11 @@ TagManager:
   - UI
   - Piso
   - Jugador
-  - Ladron
-  - Policia
-  - 
-  - 
-  - 
+  - Enemigo
+  - AtaqueDeJugador
+  - AtaqueDeEnemigo
+  - Obstaculo
+  - Pared
   - 
   - 
   - 
