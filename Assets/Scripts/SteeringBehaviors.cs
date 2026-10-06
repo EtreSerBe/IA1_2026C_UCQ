@@ -30,7 +30,31 @@ public class SteeringBehaviors
         // Lo mismo que seek, pero en la dirección opuesta.
         return Seek(objetivo, posicionActual, maximaVelocidad, velocidadActual, maximaFuerza) * -1f;
     }
-    
+
+    public static Vector3 Pursuit(Vector3 objetivo, Vector3 velocidadDelObjetivo, float tiempoAFuturo,
+        Vector3 posicionActual, 
+        float maximaVelocidadParam, Vector3 velocidadActual, float maximaFuerzaParam)
+    {
+        // Obtenemos la posición que tendrá nuestro objetivo tras transcurrir X tiempo a Futuro.
+        Vector3 posicionFutura = objetivo + velocidadDelObjetivo * tiempoAFuturo;
+        
+        // Es Seek pero hacia la posición del futuro
+        return Seek(posicionFutura, posicionActual, maximaVelocidadParam, velocidadActual, maximaFuerzaParam);
+    }
+
+    // La misma idea que pursuit, pero con Flee en vez de Seek.
+    public static Vector3 Evade(Vector3 objetivo, Vector3 velocidadDelObjetivo, float tiempoAFuturo,
+        Vector3 posicionActual,
+        float maximaVelocidadParam, Vector3 velocidadActual, float maximaFuerzaParam)
+    {
+        // Obtenemos la posición que tendrá nuestro objetivo tras transcurrir X tiempo a Futuro.
+        Vector3 posicionFutura = objetivo + velocidadDelObjetivo * tiempoAFuturo;
+        
+        // Es Flee pero hacia la posición del futuro
+        return Flee(posicionFutura, posicionActual, maximaVelocidadParam,
+            velocidadActual, maximaFuerzaParam);
+    }
+
     public static Vector3 ActualizarAceleracionVelocidadYPosicion(Vector3 steeringForce, float masaParam, 
         float maximaVelocidad, ref Vector3 velocidadActual, Vector3 posicion)
     {

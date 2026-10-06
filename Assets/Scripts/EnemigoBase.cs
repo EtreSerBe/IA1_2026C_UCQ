@@ -85,37 +85,18 @@ public class EnemigoBase : MonoBehaviour
 
 
 
-    // Update is called once per frame
+    // Lo ideal será que este update de la clase padre quede vacío, porque las clases hijas tienen updates muy
+    // distintos entre sí, entonces no vale la pena forzarlas a sobreescribirlo.
     void Update()
     {
+        ActualizarObjetivo();
 
-        // Le pedimos al sentido de visión los objetos que conoce, y de esos nosotros vamos a perseguir a uno, si es que hay
-        List<GameObject> objetosConocidos = SentidoDeVision.GetObjetosConocidos();
-        // si la lista no está vacía, es que hay al menos un conocido, y entonces yo lo puedo poner como mi objetivo.
-        if (objetosConocidos.Count > 0)
+        if(Objetivo != null)
         {
-            Objetivo = objetosConocidos[0];
             
             // Documento original de los steering behaviors: https://www.red3d.com/cwr/papers/1999/gdc99steer.pdf
 
             Vector3 steeringForce = Seek();
-            
-            // Ahora le va a sumar a esa steering force la fuerza del ObstacleAvoidance de todos los obstáculos que conozca
-            List<GameObject> obstaculosConocidos = SentidoDeVision.GetObstaculosConocidos();
-            foreach (var obstaculo in obstaculosConocidos)
-            {
-                // Multiplica esa fuerza del flee por qué tan lejos está este enemigo de dicho obstáculo en proporción
-                // al tamaño del rango de detección.
-                // Si la distancia entre el obstáculo y este enemigo es mayor o igual que el rango de detección,
-                // entonces ese flee se multiplica por 0.
-                // Esto es un clásico caso de Interpolación Lineal
-                float porcentaje = Mathf.Lerp(0, 1.0f,
-                    1.0f - Vector3.Distance(transform.position,
-                        obstaculo.transform.position) / SentidoDeVision.GetRadioDeColliderDeDeteccion());
-                steeringForce += Flee(obstaculo.transform.position) * porcentaje;
-            }
-            // NOTA: para obstacle avoidance, prefieran los obstáculos redondeados, como cápsulas, cilindros o esferas, 
-            // para que se vea más suave y se atore menos.
             
             ActualizarAceleracionVelocidadYPosicion(steeringForce);
             
@@ -127,13 +108,24 @@ public class EnemigoBase : MonoBehaviour
             // transform.position += direccionDeseada * (Time.deltaTime * maximaVelocidad);
             // Debug.Log("El transform.position que va aumentando cada cuadro es: " + transform.position); 
         }
+        
+
+        // AplicarGravedad();
+    }
+
+    protected void ActualizarObjetivo()
+    {
+        // Le pedimos al sentido de visión los objetos que conoce, y de esos nosotros vamos a perseguir a uno, si es que hay
+        List<GameObject> objetosConocidos = SentidoDeVision.GetObjetosConocidos();
+        // si la lista no está vacía, es que hay al menos un conocido, y entonces yo lo puedo poner como mi objetivo.
+        if (objetosConocidos.Count > 0)
+        {
+            Objetivo = objetosConocidos[0];
+        }
         else // Nos faltaba el otro lado de la moneda: cuando ya no ves a nadie, entonces ya no tienes objetivo!
         {
             Objetivo = null;
         }
-        
-
-        // AplicarGravedad();
     }
 
     protected Vector3 Flee()
@@ -172,6 +164,21 @@ public class EnemigoBase : MonoBehaviour
         // return steeringForce;
     }
 
+    protected Vector3 Pursuit(Vector3 posicionDelObjetivo, Vector3 velocidadDelObjetivo, float tiempoAFuturo)
+    {
+        return SteeringBehaviors.Pursuit(posicionDelObjetivo, velocidadDelObjetivo, tiempoAFuturo,
+            transform.position,
+            maximaVelocidad, VelocidadActual, maximaFuerza);
+    }
+
+    // Esta usa la posición del Objetivo ya obtenido por el ActualizarObjetivo.
+    protected Vector3 Pursuit(Vector3 velocidadDelObjetivo, float tiempoAFuturo)
+    {
+        return SteeringBehaviors.Pursuit(Objetivo.transform.position, velocidadDelObjetivo, tiempoAFuturo,
+            transform.position,
+            maximaVelocidad, VelocidadActual, maximaFuerza);
+    }
+    
     protected void ActualizarAceleracionVelocidadYPosicion(Vector3 steeringForce)
     {
         transform.position = SteeringBehaviors.ActualizarAceleracionVelocidadYPosicion(steeringForce, masa, maximaVelocidad,
