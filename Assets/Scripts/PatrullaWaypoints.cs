@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -36,9 +37,28 @@ public class PatrullaWaypoints : MonoBehaviour
         _waypointActual = waypoints[_indiceWaypointActual];
     }
 
-    // Update is called once per frame
+    // Se llama una vez por frame y determina el valor de Time.deltaTime.
     void Update()
     {
+
+    }
+
+    // Es lo "mismo" que el Update, PERO este a fuerzas se manda a llamar cada cierto tiempo FIJO, independientemente
+    // del framerate.
+    // Por defecto se ejecuta 50 veces por segundo (cada 0.02 milisegundos),
+    // lo pueden cambiar en Project Settings->Time->Fixed Timestep, pero es rara la vez que necesiten cambiarlo,
+    // aumentarlo la cantidad de veces es pesado porque se aumenta el cuántas veces se checan las físicas de TODA la escena.
+    // Este FixedUpdate es el que siempre se recomienda para el manejo de movimiento de Rigidbodies (gameObjects que contengan rigidbodies)
+    // y (creo) que character controllers, siempre y cuando haya elementos con simulación física o detección de colisión física.
+    // este tiene Time.fixedDeltaTime, que es el que debe de usarse aquí en lugar del Time.deltaTime normalito.
+    private void FixedUpdate()
+    {
+        // Por ejemplo, addForces, cambios a la velocity de un rigidbody, o a la rotación de un objeto que depende de rigidbody, 
+        // entre otras. Como regla general, casi siempre que tenga que ver con actualizar un rigidbody de forma "constante",
+        // va a ser en este fixedUpdate.
+        
+        
+        // COMPORTAMIENTO DEL AGENTE:
         // ¿cómo sabemos cuál es el waypoint actualmente activo?
         // Pues inicias por el primero... :D
         // ya que llegas al primero, te vas luego al segundo... :D 
@@ -71,5 +91,7 @@ public class PatrullaWaypoints : MonoBehaviour
         
         // usamos Acceleration para no tomar en cuenta la Masa del rigidbody (al menos por ahora).
         _rb.AddForce(steeringForce, ForceMode.Acceleration);
+        
+
     }
 }

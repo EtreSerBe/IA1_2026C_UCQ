@@ -164,6 +164,12 @@ public class EnemigoBase : MonoBehaviour
         // return steeringForce;
     }
 
+    protected Vector3 Seek(Vector3 posicionObjetivo)
+    {
+        return SteeringBehaviors.Seek(posicionObjetivo, transform.position,
+            maximaVelocidad, VelocidadActual, maximaFuerza);
+    }
+    
     protected Vector3 Pursuit(Vector3 posicionDelObjetivo, Vector3 velocidadDelObjetivo, float tiempoAFuturo)
     {
         return SteeringBehaviors.Pursuit(posicionDelObjetivo, velocidadDelObjetivo, tiempoAFuturo,
