@@ -284,20 +284,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9f75f16b4f627b64d8e0df79f11fd737, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TileGrid
-  ancho: 5
-  alto: 10
+  ancho: 7
+  alto: 7
   probabilidadDeNoCaminable: 0.33
   permitirDiagonales: 0
   origenX: 3
   origenY: 2
-  destinoX: 1
-  destinoY: 4
+  destinoX: 5
+  destinoY: 6
   tamanioPorCuadroDelGizmo: 0.8
+  tiempoEntrePasos: 0.5
   colorCaminable: {r: 1, g: 1, b: 1, a: 1}
   colorNoCaminable: {r: 0, g: 0, b: 0, a: 1}
   colorOrigen: {r: 0, g: 0.5450981, b: 0.5450981, a: 1}
   colorDestino: {r: 0.53366613, g: 0.9245283, b: 0.13519046, a: 1}
   colorLineaParent: {r: 1, g: 0, b: 0, a: 1}
+  colorListaAbierta: {r: 0.7372549, g: 0.3729975, b: 0.36078432, a: 1}
+  colorListaCerrada: {r: 0.48324528, g: 0.25342646, b: 0.8018868, a: 1}
+  colorParteDelCamino: {r: 0.9433962, g: 0.8810864, b: 0.06674972, a: 1}
 --- !u!4 &1645506409
 Transform:
   m_ObjectHideFlags: 0
