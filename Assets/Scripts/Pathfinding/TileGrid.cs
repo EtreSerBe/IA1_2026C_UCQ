@@ -79,6 +79,19 @@ public class Nodo
         _parent = parent;
     }
     public Nodo Parent => _parent;
+
+    private float _distancia;
+    public float Distancia => _distancia;
+
+    public void CalcularYAsignarDistancia(Nodo nodo)
+    {
+        _distancia = Mathf.Abs(_x - nodo._x) + Mathf.Abs(_y - nodo._y);
+    }
+
+    public float ObtenerPrioridad()
+    {
+        return _distancia;
+    }
 }
 
 public class TileGrid : MonoBehaviour
@@ -127,6 +140,9 @@ public class TileGrid : MonoBehaviour
     private Stack<Nodo> listaAbierta = new Stack<Nodo>();
 
     private Queue<Nodo> filaAbierta = new Queue<Nodo>(); // ESTA ES LA QUE DEBEN USAR PARA SU TAREA
+    
+    // Best-first search // Fila de prioridad (PriorityQueue)
+    private PriorityQueue filaAbiertaDePrioridad = new PriorityQueue();
     
     // y tenemos otro contenedor donde vamos a poner los nodos que ya conocemos y que ya no tienen nada por hacer.
     private HashSet<Nodo> listaCerrada = new HashSet<Nodo>();
@@ -182,7 +198,8 @@ public class TileGrid : MonoBehaviour
         Nodo destino = Grid[destinoY, destinoX];
         destino.HacerCaminable(); // lo hacemos caminable para siempre poder entrar al nodo destino si hubo un camino.
 
-        StartCoroutine(DepthFirstSearchIterativoCorrutina(origen, destino));
+        // StartCoroutine(DepthFirstSearchIterativoCorrutina(origen, destino));
+        StartCoroutine(BestFirstSearchIterativoCorrutina(origen, destino));
 
         // if (DepthFirstSearchIterativo(origen, destino))
         // {
@@ -224,6 +241,59 @@ public class TileGrid : MonoBehaviour
          * Checa si ya llegaste a la meta. Si ya llegaste, salte de la función.
          * Toma todos los vecinos del actual y mete los que se pueda a la lista abierta.
          */
+        
+        return false;
+    }
+    
+    bool BestFirstSearchIterativo(Nodo origen, Nodo destino)
+    {
+        Nodo actual = origen;
+
+        filaAbiertaDePrioridad = new PriorityQueue();
+        listaCerrada = new HashSet<Nodo>();
+
+        // Enqueue es "encolar" que es mandar el elemento hasta el final de la fila. 
+        filaAbiertaDePrioridad.Enqueue(actual); // necesitamos meter al actual como primer elemento de la lista, para que no se salte el while.
+
+        while (filaAbiertaDePrioridad.Count > 0)
+        {
+            // sacar al del frente de la fila abierta y volverlo el Actual
+            actual = filaAbiertaDePrioridad.Dequeue();
+
+            if (actual == destino)
+            {
+                Backtracking(actual);
+                return true; // ya llegamos
+            }
+            
+            // visitamos vecinos
+            for (int i = 0; i < 8; i++)
+            {
+                // si no se permiten diagonales, solo checar 0, 2, 4, y 6, que son arriba, derecha, abajo e izquierda, respectivamente.
+                if (!permitirDiagonales && i % 2 == 1)
+                {
+                    continue;
+                }
+
+                Nodo vecino = ObtenerVecino(actual, (EDirecciones)i);
+                if (vecino == null) // Checamos que no nos salgamos de la matriz por la izquierda, derecha, arriba, abajo, etc.
+                    continue; // no hubo vecino, entonces nos vamos al siguiente vecino posible.
+                
+                // Meter cosas a la lista abierta sucede cuando nosotros mandaríamos a llamar la recursión.
+                if (vecino.Parent == null && vecino.EsCaminable)
+                {
+                    // se asigna el nodo actual (actual) como parent de su vecino
+                    vecino.AsignarParent(actual);
+                    // PASO CLAVE: antes de meterlo a la fila abierta, hay que calcularle su prioridad
+                    vecino.CalcularYAsignarDistancia(destino); // Y ya, con eso la priorityQueue lo va a poner en la posición adecuada.
+                    
+                    // como el ciclo while es el que está remplazando la recursión, pues necesitamos re-empezar hasta arriba
+                    // del while, pero ahora nuestro actual va a ser este vecino.
+                    filaAbiertaDePrioridad.Enqueue(vecino);
+                    actual = vecino;
+                }
+            }
+        }
         
         return false;
     }
@@ -554,6 +624,63 @@ public class TileGrid : MonoBehaviour
         
         // llegamos aquí porque la lista abierta quedó vacía, y por lo tanto ya no había más nodos que visitar.
         // yield break; // no es necesario porque ya es el final de la función.
+    }
+    
+    IEnumerator BestFirstSearchIterativoCorrutina(Nodo origen, Nodo destino)
+    {
+        Nodo actual = origen;
+
+        filaAbiertaDePrioridad = new PriorityQueue();
+        listaCerrada = new HashSet<Nodo>();
+
+        // Enqueue es "encolar" que es mandar el elemento hasta el final de la fila. 
+        filaAbiertaDePrioridad.Enqueue(actual); // necesitamos meter al actual como primer elemento de la lista, para que no se salte el while.
+
+        while (filaAbiertaDePrioridad.Count > 0)
+        {
+            yield return new WaitForSeconds(tiempoEntrePasos);
+            
+            // sacar al del frente de la fila abierta y volverlo el Actual
+            actual = filaAbiertaDePrioridad.Dequeue();
+
+            if (actual == destino)
+            {
+                Debug.Log("Sí se llegó ");
+                Backtracking(actual);
+                yield break; // ya llegamos
+            }
+            
+            // visitamos vecinos
+            for (int i = 0; i < 8; i++)
+            {
+                // si no se permiten diagonales, solo checar 0, 2, 4, y 6, que son arriba, derecha, abajo e izquierda, respectivamente.
+                if (!permitirDiagonales && i % 2 == 1)
+                {
+                    continue;
+                }
+
+                Nodo vecino = ObtenerVecino(actual, (EDirecciones)i);
+                if (vecino == null) // Checamos que no nos salgamos de la matriz por la izquierda, derecha, arriba, abajo, etc.
+                    continue; // no hubo vecino, entonces nos vamos al siguiente vecino posible.
+                
+                // Meter cosas a la lista abierta sucede cuando nosotros mandaríamos a llamar la recursión.
+                if (vecino.Parent == null && vecino.EsCaminable)
+                {
+                    // se asigna el nodo actual (actual) como parent de su vecino
+                    vecino.AsignarParent(actual);
+                    // PASO CLAVE: antes de meterlo a la fila abierta, hay que calcularle su prioridad
+                    vecino.CalcularYAsignarDistancia(destino); // Y ya, con eso la priorityQueue lo va a poner en la posición adecuada.
+                    
+                    // como el ciclo while es el que está remplazando la recursión, pues necesitamos re-empezar hasta arriba
+                    // del while, pero ahora nuestro actual va a ser este vecino.
+                    filaAbiertaDePrioridad.Enqueue(vecino);
+                    actual = vecino;
+                }
+            }
+        }
+        
+        Debug.Log("No se llegó ");
+        
     }
 
 }
