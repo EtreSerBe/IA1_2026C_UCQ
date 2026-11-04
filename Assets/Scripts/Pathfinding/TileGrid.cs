@@ -41,16 +41,26 @@ public enum ELayers_PotenciasDeDos : Int32 // si tiene que ser un entero, porque
     
 }
 
+public enum ETipoDeTerreno
+{
+    Piso = 0,
+    Tierra,
+    Fuego,
+    Max
+}
+
 
 public class Nodo
 {
-    public Nodo(string id, int x, int y, bool esCaminable)
+    public Nodo(string id, int x, int y, bool esCaminable, ETipoDeTerreno tipoDeTerreno, float costoPropio)
     {
         _id = id;
         _x = x;
         _y = y;
         _esCaminable = esCaminable;
         _parent = null;
+        _tipoDeTerreno = tipoDeTerreno;
+        _costo = costoPropio;
     }
     
     // Identificador
@@ -65,6 +75,9 @@ public class Nodo
 
     private bool _esCaminable;
     public bool EsCaminable => _esCaminable;
+
+    private ETipoDeTerreno _tipoDeTerreno;
+    public ETipoDeTerreno TipoDeTerreno => _tipoDeTerreno;
 
     public void HacerCaminable()
     {
@@ -86,12 +99,30 @@ public class Nodo
     public void CalcularYAsignarDistancia(Nodo nodo)
     {
         _distancia = Mathf.Abs(_x - nodo._x) + Mathf.Abs(_y - nodo._y);
+        // Debug.Log($"La distancia del nodo {_id} al nodo objetivo: {nodo._id} es de {_distancia}");
     }
 
     public float ObtenerPrioridad()
     {
         return _distancia;
     }
+
+    public float ObtenerPrioridadDjikstra()
+    {
+        return _costoTotal;
+    }
+    
+    private float _costo; // cost o weight en inglés
+    private float _costoTotal;
+    public float Costo => _costo;
+    public float CostoTotal => _costoTotal;
+    
+    
+    public void AsignarCostoTotal(Nodo parent)
+    {
+        _costoTotal = _costo + _parent._costoTotal;
+    }
+    
 }
 
 public class TileGrid : MonoBehaviour
@@ -101,6 +132,10 @@ public class TileGrid : MonoBehaviour
     public int alto = 5;
     public float probabilidadDeNoCaminable = 0.2f;
     public bool permitirDiagonales = false;
+
+    public float costoPiso = 1.0f;
+    public float costoTierra = 3.0f;
+    public float costoFuego = 25.0f;
     
     [Header("Configuración del pathfinding")]
     [Min(0)]
@@ -121,6 +156,7 @@ public class TileGrid : MonoBehaviour
     [Header("Control de Gizmos")]
     [Range(0.1f, 1.0f)]
     public float tamanioPorCuadroDelGizmo = 0.8f;
+    public float tamanioPorEsferaDelGizmo = 0.3f;
 
     public float tiempoEntrePasos = 0.5f;
     
@@ -134,6 +170,9 @@ public class TileGrid : MonoBehaviour
     public Color colorListaCerrada = Color.darkGray;
     public Color colorParteDelCamino = Color.lightBlue;
 
+    public Color colorPiso = Color.white;
+    public Color colorTierra = Color.sandyBrown;
+    public Color colorFuego = Color.red;
     
     // para cuáles nodos quedan por visitar, es necesario almacenarlos en algún lugar
     // son los nodos que ya sabe el algoritmo que existen, pero que todavía tienen cosas por hacer.
@@ -183,10 +222,35 @@ public class TileGrid : MonoBehaviour
                 // Estructura de un If de una sola línea. Creo que se le llama Operador Ternario.
                 // (condición a checar) + ? + (lo que pasa si sí se cumplió la condición) + : + (lo que pasa si no se cumplió);
                 bool esCaminable = rand < probabilidadDeNoCaminable ? false : true; // este de acá es para lo que sea.
+
+                float costoPropio = esCaminable ? 1.0f : float.PositiveInfinity;
+                
+                ETipoDeTerreno tipoTerreno = (ETipoDeTerreno)Random.Range(0, (int)ETipoDeTerreno.Max);
+                if(esCaminable)
+                {
+                    switch (tipoTerreno)
+                    {
+                        case ETipoDeTerreno.Piso:
+                            costoPropio = costoPiso;
+                            break;
+                        case ETipoDeTerreno.Tierra:
+                            costoPropio = costoTierra;
+                            break;
+                        case ETipoDeTerreno.Fuego:
+                            costoPropio = costoFuego;
+                            break;
+                        case ETipoDeTerreno.Max:
+                            throw new ArgumentOutOfRangeException();
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+                
+                }
                 
                 // bool esCaminableDirecto = rand < probabilidadDeNoCaminable; // exclusivo para booleanos
+ 
                 
-                Grid[y, x] = new Nodo($"{x}_{y}", x, y, esCaminable);
+                Grid[y, x] = new Nodo($"{x}_{y}", x, y, esCaminable, tipoTerreno, costoPropio);
                 // por que "[y, x]" y no "[x, y]"?
             }
         }
@@ -199,8 +263,10 @@ public class TileGrid : MonoBehaviour
         destino.HacerCaminable(); // lo hacemos caminable para siempre poder entrar al nodo destino si hubo un camino.
 
         // StartCoroutine(DepthFirstSearchIterativoCorrutina(origen, destino));
-        StartCoroutine(BestFirstSearchIterativoCorrutina(origen, destino));
+        // StartCoroutine(BestFirstSearchIterativoCorrutina(origen, destino));
+        StartCoroutine(DjistraCorrutina(origen, destino));
 
+        
         // if (DepthFirstSearchIterativo(origen, destino))
         // {
         //     Debug.Log($"Sí hubo camino de: {origen.ID} a {destino.ID}");
@@ -259,10 +325,11 @@ public class TileGrid : MonoBehaviour
         {
             // sacar al del frente de la fila abierta y volverlo el Actual
             actual = filaAbiertaDePrioridad.Dequeue();
-
+            listaCerrada.Add(actual);
+            
             if (actual == destino)
             {
-                Backtracking(actual);
+                caminoALaMeta = Backtracking(actual);
                 return true; // ya llegamos
             }
             
@@ -419,7 +486,6 @@ public class TileGrid : MonoBehaviour
         if (x >= ancho || x < 0 ||
             y >= alto || y < 0)
             return false;
-        Debug.Log($"{x}, {y} está dentro de la cuadricula");
         return true;
     }
 
@@ -511,22 +577,57 @@ public class TileGrid : MonoBehaviour
                 for (int x = 0; x < ancho; x++)
                 {
                     Gizmos.color = Grid[y, x].EsCaminable ? colorCaminable : colorNoCaminable;
+                    
+                    if (Grid[y, x].EsCaminable)
+                    {
+                        switch (Grid[y, x].TipoDeTerreno)
+                        {
+                            case ETipoDeTerreno.Piso:
+                                Gizmos.color = colorPiso;
+                                break;
+                            case ETipoDeTerreno.Tierra:
+                                Gizmos.color = colorTierra;
+                                break;
+                            case ETipoDeTerreno.Fuego:
+                                Gizmos.color = colorFuego;
+                                break;
+                            case ETipoDeTerreno.Max:
+                                throw new ArgumentOutOfRangeException();
+                            default:
+                                throw new ArgumentOutOfRangeException();
+                        }
+                    }
 
-                    if (listaAbierta.Contains(Grid[y, x]))
+                    Gizmos.DrawCube(new Vector3(x, -y, 0.0f), Vector3.one * tamanioPorCuadroDelGizmo);
+                }
+            }
+            
+            // Dibujamos las esferas de Abierto, Cerrado, y parte del camino
+            for (int y = 0; y < alto; y++)
+            {
+                // Grid[y] = new Node[ancho];
+                for (int x = 0; x < ancho; x++)
+                {
+                    Gizmos.color = Grid[y, x].EsCaminable ? colorCaminable : colorNoCaminable;
+
+                    if (listaAbierta.Contains(Grid[y, x]) || filaAbierta.Contains(Grid[y, x])
+                                                          || filaAbiertaDePrioridad.Contiene(Grid[y, x]))
                     {
                         Gizmos.color = colorListaAbierta;
+                        Gizmos.DrawSphere(new Vector3(x, -y, -1.0f), tamanioPorEsferaDelGizmo);
                     }
                     else if (listaCerrada.Contains(Grid[y, x]))
                     {
                         Gizmos.color = colorListaCerrada;
+                        Gizmos.DrawSphere(new Vector3(x, -y, -1.0f), tamanioPorEsferaDelGizmo);
                     }
 
                     if (caminoALaMeta.Contains(Grid[y, x]))
                     {
                         Gizmos.color = colorParteDelCamino;
+                        Gizmos.DrawSphere(new Vector3(x, -y, -1.0f), tamanioPorEsferaDelGizmo);
                     }
 
-                    Gizmos.DrawCube(new Vector3(x, -y, 0.0f), Vector3.one * tamanioPorCuadroDelGizmo);
                     
                     // si tiene asignado un parent del pathfinding
                     Nodo parent = Grid[y, x].Parent;
@@ -642,11 +743,12 @@ public class TileGrid : MonoBehaviour
             
             // sacar al del frente de la fila abierta y volverlo el Actual
             actual = filaAbiertaDePrioridad.Dequeue();
+            listaCerrada.Add(actual);
 
             if (actual == destino)
             {
                 Debug.Log("Sí se llegó ");
-                Backtracking(actual);
+                caminoALaMeta = Backtracking(actual);
                 yield break; // ya llegamos
             }
             
@@ -674,7 +776,8 @@ public class TileGrid : MonoBehaviour
                     // como el ciclo while es el que está remplazando la recursión, pues necesitamos re-empezar hasta arriba
                     // del while, pero ahora nuestro actual va a ser este vecino.
                     filaAbiertaDePrioridad.Enqueue(vecino);
-                    actual = vecino;
+                    filaAbiertaDePrioridad.Imprimir();
+                    // actual = vecino; // ERROR, el actual solo cambia al inicio del while.
                 }
             }
         }
@@ -683,6 +786,92 @@ public class TileGrid : MonoBehaviour
         
     }
 
+    
+    IEnumerator DjistraCorrutina(Nodo origen, Nodo destino)
+    {
+        Nodo actual = origen;
+
+        filaAbiertaDePrioridad = new PriorityQueue();
+        listaCerrada = new HashSet<Nodo>();
+
+        // Enqueue es "encolar" que es mandar el elemento hasta el final de la fila. 
+        filaAbiertaDePrioridad.Enqueue(actual); // necesitamos meter al actual como primer elemento de la lista, para que no se salte el while.
+
+        while (filaAbiertaDePrioridad.Count > 0)
+        {
+            yield return new WaitForSeconds(tiempoEntrePasos);
+            
+            // sacar al del frente de la fila abierta y volverlo el Actual
+            actual = filaAbiertaDePrioridad.Dequeue();
+            listaCerrada.Add(actual);
+
+            if (actual == destino)
+            {
+                Debug.Log("Sí se llegó ");
+                caminoALaMeta = Backtracking(actual);
+                yield break; // ya llegamos
+            }
+            
+            // visitamos vecinos
+            for (int i = 0; i < 8; i++)
+            {
+                // si no se permiten diagonales, solo checar 0, 2, 4, y 6, que son arriba, derecha, abajo e izquierda, respectivamente.
+                if (!permitirDiagonales && i % 2 == 1)
+                {
+                    continue;
+                }
+
+                Nodo vecino = ObtenerVecino(actual, (EDirecciones)i);
+                if (vecino == null) // Checamos que no nos salgamos de la matriz por la izquierda, derecha, arriba, abajo, etc.
+                    continue; // no hubo vecino, entonces nos vamos al siguiente vecino posible.
+
+                // Si ya está en la lista cerrada, ya no es necesario hacer nada con ese nodo.
+                if (listaCerrada.Contains(vecino))
+                    continue;
+                
+                // Si el nodo SÍ tiene parent, 
+                if (vecino.Parent != null)
+                {
+                    // tenemos que checar si el nodo actual sería un mejor parent que el que ya tiene (valor más chico de prioridad)
+                    if (actual.ObtenerPrioridad() < vecino.Parent.ObtenerPrioridad())
+                    {
+                        // Primero lo sacamos de la lista abierta
+                        filaAbiertaDePrioridad.BorrarNodo(vecino);
+                        
+                        // Entonces, hacemos que el actual sea el nuevo parent del vecino, para que se actualice su prioridad
+                        vecino.AsignarParent(actual);
+                        vecino.AsignarCostoTotal(actual);
+                        
+                        // Finalmente, lo reinsertamos en la lista abierta con su nuevo valor de prioridad
+                        filaAbiertaDePrioridad.EnqueueDjikstra(vecino);
+                        
+                        filaAbiertaDePrioridad.Imprimir();
+                        continue; // nos pasamos al siguiente vecino
+                    }
+                }
+                
+                // Meter cosas a la lista abierta sucede cuando nosotros mandaríamos a llamar la recursión.
+                if (vecino.Parent == null && vecino.EsCaminable)
+                {
+                    // se asigna el nodo actual (actual) como parent de su vecino
+                    vecino.AsignarParent(actual);
+                    // PASO CLAVE: antes de meterlo a la fila abierta, hay que calcularle su prioridad
+                    vecino.AsignarCostoTotal(actual);
+                    
+                    // como el ciclo while es el que está remplazando la recursión, pues necesitamos re-empezar hasta arriba
+                    // del while, pero ahora nuestro actual va a ser este vecino.
+                    filaAbiertaDePrioridad.EnqueueDjikstra(vecino);
+                    filaAbiertaDePrioridad.Imprimir();
+                    // actual = vecino; // ERROR, el actual solo cambia al inicio del while.
+                }
+            }
+        }
+        
+        Debug.Log("No se llegó ");
+        
+    }
+
+    
 }
 
 /*
