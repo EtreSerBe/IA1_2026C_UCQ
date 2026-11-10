@@ -93,12 +93,15 @@ public class Nodo
     }
     public Nodo Parent => _parent;
 
+    // Distancia es el h_cost de A*
     private float _distancia;
     public float Distancia => _distancia;
 
     public void CalcularYAsignarDistancia(Nodo nodo)
     {
-        _distancia = Mathf.Abs(_x - nodo._x) + Mathf.Abs(_y - nodo._y);
+        _distancia = Mathf.Abs(_x - nodo._x) + Mathf.Abs(_y - nodo._y); // Absoluta o Manhattan
+        // _distancia = Mathf.Sqrt(Mathf.Pow(_x - nodo._x,2) + Mathf.Pow(_y - nodo._y, 2));  // Euclidiana
+
         // Debug.Log($"La distancia del nodo {_id} al nodo objetivo: {nodo._id} es de {_distancia}");
     }
 
@@ -112,21 +115,37 @@ public class Nodo
         return _costoTotal;
     }
     
-    private float _costo; // cost o weight en inglés
-    private float _costoTotal;
+    public float ObtenerPrioridadAEstrella()
+    {
+        return _costoFinal;
+    }
+    
+    private float _costo; // cost o weight en inglés // terrain_cost de A*
+    private float _costoTotal; // Costo G-cost de A*
     public float Costo => _costo;
     public float CostoTotal => _costoTotal;
     
     
+    // Costo G-cost de A*
     public void AsignarCostoTotal(Nodo parent)
     {
         _costoTotal = _costo + _parent._costoTotal;
     }
-    
+
+    private float _costoFinal;
+    public float CostoFinal => _costoFinal;
+
+    public void CalcularCostoFinal()
+    {
+        _costoFinal = _costoTotal + _distancia;
+    }
+
 }
 
 public class TileGrid : MonoBehaviour
 {
+    public PatrullaWaypoints agenteWaypoints;
+    
     [Header("Configuración de cuadricula")]
     public int ancho = 5;
     public int alto = 5;
@@ -180,7 +199,7 @@ public class TileGrid : MonoBehaviour
 
     private Queue<Nodo> filaAbierta = new Queue<Nodo>(); // ESTA ES LA QUE DEBEN USAR PARA SU TAREA
     
-    // Best-first search // Fila de prioridad (PriorityQueue)
+    // Best-first search // Fila de prioridad (PriorityQueue), // también se usa en Djikstra y en A*
     private PriorityQueue filaAbiertaDePrioridad = new PriorityQueue();
     
     // y tenemos otro contenedor donde vamos a poner los nodos que ya conocemos y que ya no tienen nada por hacer.
@@ -224,8 +243,9 @@ public class TileGrid : MonoBehaviour
                 bool esCaminable = rand < probabilidadDeNoCaminable ? false : true; // este de acá es para lo que sea.
 
                 float costoPropio = esCaminable ? 1.0f : float.PositiveInfinity;
-                
-                ETipoDeTerreno tipoTerreno = (ETipoDeTerreno)Random.Range(0, (int)ETipoDeTerreno.Max);
+
+                ETipoDeTerreno tipoTerreno = ETipoDeTerreno.Piso;
+                // ETipoDeTerreno tipoTerreno = (ETipoDeTerreno)Random.Range(0, (int)ETipoDeTerreno.Max);
                 if(esCaminable)
                 {
                     switch (tipoTerreno)
@@ -264,7 +284,8 @@ public class TileGrid : MonoBehaviour
 
         // StartCoroutine(DepthFirstSearchIterativoCorrutina(origen, destino));
         // StartCoroutine(BestFirstSearchIterativoCorrutina(origen, destino));
-        StartCoroutine(DjistraCorrutina(origen, destino));
+        // StartCoroutine(DjistraCorrutina(origen, destino));
+        StartCoroutine(AEstrellaCorrutina(origen, destino));
 
         
         // if (DepthFirstSearchIterativo(origen, destino))
@@ -809,6 +830,15 @@ public class TileGrid : MonoBehaviour
             {
                 Debug.Log("Sí se llegó ");
                 caminoALaMeta = Backtracking(actual);
+
+                List<Vector3> listaPosicionesDeNodos = new List<Vector3>();
+                foreach (var nodo in caminoALaMeta)
+                {
+                    listaPosicionesDeNodos.Add(new Vector3(nodo.X, -nodo.Y, 0.0f));
+                }
+                
+                // asignamos este camino al agente patrulla waypoints
+                agenteWaypoints.AsignarWaypoints(listaPosicionesDeNodos);
                 yield break; // ya llegamos
             }
             
@@ -871,6 +901,102 @@ public class TileGrid : MonoBehaviour
         
     }
 
+    IEnumerator AEstrellaCorrutina(Nodo origen, Nodo destino)
+    {
+        Nodo actual = origen;
+
+        filaAbiertaDePrioridad = new PriorityQueue();
+        listaCerrada = new HashSet<Nodo>();
+
+        // Enqueue es "encolar" que es mandar el elemento hasta el final de la fila. 
+        filaAbiertaDePrioridad.Enqueue(actual); // necesitamos meter al actual como primer elemento de la lista, para que no se salte el while.
+
+        while (filaAbiertaDePrioridad.Count > 0)
+        {
+            yield return new WaitForSeconds(tiempoEntrePasos);
+            
+            // sacar al del frente de la fila abierta y volverlo el Actual
+            actual = filaAbiertaDePrioridad.Dequeue();
+            listaCerrada.Add(actual);
+
+            if (actual == destino)
+            {
+                Debug.Log("Sí se llegó con A estrella");
+                caminoALaMeta = Backtracking(actual);
+
+                List<Vector3> listaPosicionesDeNodos = new List<Vector3>();
+                foreach (var nodo in caminoALaMeta)
+                {
+                    listaPosicionesDeNodos.Add(new Vector3(nodo.X, -nodo.Y, 0.0f));
+                }
+                
+                // asignamos este camino al agente patrulla waypoints
+                agenteWaypoints.AsignarWaypoints(listaPosicionesDeNodos);
+                yield break; // ya llegamos
+            }
+            
+            // visitamos vecinos
+            for (int i = 0; i < 8; i++)
+            {
+                // si no se permiten diagonales, solo checar 0, 2, 4, y 6, que son arriba, derecha, abajo e izquierda, respectivamente.
+                if (!permitirDiagonales && i % 2 == 1)
+                {
+                    continue;
+                }
+
+                Nodo vecino = ObtenerVecino(actual, (EDirecciones)i);
+                if (vecino == null) // Checamos que no nos salgamos de la matriz por la izquierda, derecha, arriba, abajo, etc.
+                    continue; // no hubo vecino, entonces nos vamos al siguiente vecino posible.
+
+                // Si ya está en la lista cerrada, ya no es necesario hacer nada con ese nodo.
+                if (listaCerrada.Contains(vecino))
+                    continue;
+                
+                // Si el nodo SÍ tiene parent, 
+                if (vecino.Parent != null)
+                {
+                    // tenemos que checar si el nodo actual sería un mejor parent que el que ya tiene (valor más chico de prioridad)
+                    if (actual.ObtenerPrioridad() < vecino.Parent.ObtenerPrioridad())
+                    {
+                        // Primero lo sacamos de la lista abierta
+                        filaAbiertaDePrioridad.BorrarNodo(vecino);
+                        
+                        // Entonces, hacemos que el actual sea el nuevo parent del vecino, para que se actualice su prioridad
+                        vecino.AsignarParent(actual);
+                        vecino.CalcularYAsignarDistancia(destino); // Y ya, con eso la priorityQueue lo va a poner en la posición adecuada.
+                        vecino.AsignarCostoTotal(actual);
+                        vecino.CalcularCostoFinal();
+                        
+                        // Finalmente, lo reinsertamos en la lista abierta con su nuevo valor de prioridad
+                        filaAbiertaDePrioridad.EnqueueAEstrella(vecino);
+                        
+                        filaAbiertaDePrioridad.ImprimirAEstrella();
+                        continue; // nos pasamos al siguiente vecino
+                    }
+                }
+                
+                // Meter cosas a la lista abierta sucede cuando nosotros mandaríamos a llamar la recursión.
+                if (vecino.Parent == null && vecino.EsCaminable)
+                {
+                    // se asigna el nodo actual (actual) como parent de su vecino
+                    vecino.AsignarParent(actual);
+                    // PASO CLAVE: antes de meterlo a la fila abierta, hay que calcularle su prioridad
+                    vecino.AsignarCostoTotal(actual);
+                    vecino.CalcularYAsignarDistancia(destino); // Y ya, con eso la priorityQueue lo va a poner en la posición adecuada.
+                    vecino.CalcularCostoFinal();
+                    
+                    // como el ciclo while es el que está remplazando la recursión, pues necesitamos re-empezar hasta arriba
+                    // del while, pero ahora nuestro actual va a ser este vecino.
+                    filaAbiertaDePrioridad.EnqueueAEstrella(vecino);
+                    filaAbiertaDePrioridad.ImprimirAEstrella();
+                    // actual = vecino; // ERROR, el actual solo cambia al inicio del while.
+                }
+            }
+        }
+        
+        Debug.Log("No se llegó ");
+        
+    }
     
 }
 

@@ -65,6 +65,37 @@ public class PriorityQueue
         _listaLigada.AddLast(nodoAInsertar);
     }
     
+    public void EnqueueAEstrella(Nodo nodoAInsertar)
+    {
+        if (_listaLigada.Count == 0)
+        {
+            _listaLigada.AddFirst(nodoAInsertar);
+            return;
+        }
+        
+        // Buscar el nodo en la lista que tenga una prioridad menor (más alta) que el nodo a insertar.
+        LinkedListNode<Nodo> actual = _listaLigada.First;
+        while (actual != null) // Corrección, era comparar que no sea null, para que visite a TODOS los nodos, incluso al último
+        {
+            // Primero tenemos que checar si son iguales, y si sí, queda más adelante el que tenga menor h_cost de los dos (distancia)
+            
+            // si la prioridad de este elemento es más alta que la mía, entonces este nodo va antes que él
+            if (actual.Value.ObtenerPrioridadAEstrella() > nodoAInsertar.ObtenerPrioridadAEstrella()
+                || (actual.Value.ObtenerPrioridadAEstrella() == nodoAInsertar.ObtenerPrioridadAEstrella()
+                    && actual.Value.Distancia > nodoAInsertar.Distancia))
+            {
+                // entonces yo inserto a este nodo aquí y ya acabé la inserción
+                _listaLigada.AddBefore(actual, new LinkedListNode<Nodo>(nodoAInsertar));
+                return;
+            }
+
+            actual = actual.Next; // si no lo hemos encontrado, avanzamos al siguiente nodo
+        } 
+        
+        // si se acaba el while, es porque este nodo tiene la peor prioridad de todos, y se inserta al final
+        _listaLigada.AddLast(nodoAInsertar);
+    }
+    
     // No necesitamos una función para quitar elementos por búsqueda porque esta es una Queue, entonces solo
     // necesitamos poder quitar el de hasta el frente.
     public Nodo Dequeue()
@@ -92,6 +123,16 @@ public class PriorityQueue
         foreach (var nodo in _listaLigada)
         {
             texto += $"Prio: {nodo.ObtenerPrioridad()} -> nodo: {nodo.ID} ; " + "\n";
+        }
+        Debug.Log(texto);
+    }
+    
+    public void ImprimirAEstrella()
+    {
+        string texto = "";
+        foreach (var nodo in _listaLigada)
+        {
+            texto += $"Prio: {nodo.ObtenerPrioridadAEstrella()} -> nodo: {nodo.ID} ; " + "\n";
         }
         Debug.Log(texto);
     }

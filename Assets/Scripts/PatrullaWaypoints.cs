@@ -25,7 +25,9 @@ public class PatrullaWaypoints : MonoBehaviour
 
     // los puntos que va a visitar y en qué orden los va a visitar. Cuando visite al último, se ciclará hacia el primero.
     [SerializeField] private List<Transform> waypoints = new List<Transform>();
-    private Transform _waypointActual;
+    private List<Vector3> _waypointsPosiciones = new List<Vector3>();
+
+    private Vector3 _posicionWaypointActual;
     private int _indiceWaypointActual = 0;
 
     [SerializeField] private float tiempoDeEsperaAntesDeNuevoWaypoint = 2.0f;
@@ -42,13 +44,27 @@ public class PatrullaWaypoints : MonoBehaviour
         
         // Cuando inicias, pones como Waypoint actual al primero de la lista
         _indiceWaypointActual = 0;
-        _waypointActual = waypoints[_indiceWaypointActual];
+        foreach (var transformacion in waypoints)
+        {
+            _waypointsPosiciones.Add(transformacion.position);
+        }
+        
+        if(_waypointsPosiciones.Count != 0)
+            _posicionWaypointActual = _waypointsPosiciones[_indiceWaypointActual];
     }
 
     // Se llama una vez por frame y determina el valor de Time.deltaTime.
     void Update()
     {
 
+    }
+
+    public void AsignarWaypoints(List<Vector3> posiciones)
+    {
+        _waypointsPosiciones.Clear();
+        _waypointsPosiciones = posiciones;
+        _indiceWaypointActual = 0;
+        _posicionWaypointActual = _waypointsPosiciones[_indiceWaypointActual];
     }
 
     // Es lo "mismo" que el Update, PERO este a fuerzas se manda a llamar cada cierto tiempo FIJO, independientemente
@@ -61,6 +77,10 @@ public class PatrullaWaypoints : MonoBehaviour
     // este tiene Time.fixedDeltaTime, que es el que debe de usarse aquí en lugar del Time.deltaTime normalito.
     private void FixedUpdate()
     {
+        // seguridad de: si no hay waypoints, no te muevas.
+        if (_waypointsPosiciones.Count == 0)
+            return;
+        
         // Por ejemplo, addForces, cambios a la velocity de un rigidbody, o a la rotación de un objeto que depende de rigidbody, 
         // entre otras. Como regla general, casi siempre que tenga que ver con actualizar un rigidbody de forma "constante",
         // va a ser en este fixedUpdate.
@@ -73,7 +93,7 @@ public class PatrullaWaypoints : MonoBehaviour
         // ¿cómo sabes que ya llegaste al primero?
         // decimos que "llegamos" cuando estamos lo suficientemente cerca de nuestra posición objetivo
         // y ese "cerca" se mide con distancia entre mi posición y la posición del objetivo.
-        float distanciaAlWaypoint = Vector3.Distance(transform.position, _waypointActual.position);
+        float distanciaAlWaypoint = Vector3.Distance(transform.position, _posicionWaypointActual);
         
         // si dicha distancia es Menor que lo que yo considero Cerca
         if (distanciaAlWaypoint <= radioDeToleranciaAWaypoint)
@@ -94,7 +114,7 @@ public class PatrullaWaypoints : MonoBehaviour
         {
             // Si el agente está dentro del radio de frenado, es decir: si la distancia entre la posición del agente y
             // su posición objetivo es menor que el radio de frenado, entonces se empieza a frenar.
-            float distanciaAlObjetivo = Vector3.Distance(transform.position, _waypointActual.position);
+            float distanciaAlObjetivo = Vector3.Distance(transform.position, _posicionWaypointActual);
             if (distanciaAlObjetivo < radioDeFrenado)
             {
                 // entonces empezamos a frenar hasta la velocidad interpolada.
@@ -107,7 +127,7 @@ public class PatrullaWaypoints : MonoBehaviour
                 // _rb.linearVelocity = Vector3.ClampMagnitude(_rb.linearVelocity, interpolacionLineal);
                 // Este agente hace Seek hacia la posición del Waypoint actualmente activo PERO usando el valor de la
                 // interpolación lineal en vez de la maximaVelocidad.
-                steeringForce = SteeringBehaviors.Seek(_waypointActual.position, transform.position,
+                steeringForce = SteeringBehaviors.Seek(_posicionWaypointActual, transform.position,
                     interpolacionLineal, _rb.linearVelocity, maximaFuerza);
                 
 
@@ -125,7 +145,7 @@ public class PatrullaWaypoints : MonoBehaviour
             else
             {
                 // Este agente hace Seek hacia la posición del Waypoint actualmente activo.
-                steeringForce = SteeringBehaviors.Seek(_waypointActual.position, transform.position,
+                steeringForce = SteeringBehaviors.Seek(_posicionWaypointActual, transform.position,
                     maximaVelocidad, _rb.linearVelocity, maximaFuerza);
                 // usamos Acceleration para no tomar en cuenta la Masa del rigidbody (al menos por ahora).
                 _rb.AddForce(steeringForce, ForceMode.Acceleration);
@@ -141,17 +161,20 @@ public class PatrullaWaypoints : MonoBehaviour
         // es decir, mi waypoint Objetivo ahora es el siguiente del actual.
         _indiceWaypointActual += 1;
         // si el índice es mayor o igual que el total de waypoints, es decir, ya no hay un waypoint siguiente al cual ir,
-        if (_indiceWaypointActual >= waypoints.Count)
+        if (_indiceWaypointActual >= _waypointsPosiciones.Count)
         {
             // entonces lo regresamos al primero
             _indiceWaypointActual = 0;
         }
 
-        _waypointActual = waypoints[_indiceWaypointActual];
+        _posicionWaypointActual = _waypointsPosiciones[_indiceWaypointActual];
     }
 
     private IEnumerator EsperarAntesDeNuevoWaypoint()
     {
+        AsignarNuevoWaypoint();
+
+        yield break;
         _estaDetenido = true;
         // Detiene todo el movimiento del rigidbody para detener a este agente,
         _rb.linearVelocity = Vector3.zero;
@@ -171,18 +194,18 @@ public class PatrullaWaypoints : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        if (!Application.isPlaying)
+        if (!Application.isPlaying || _waypointsPosiciones.Count == 0)
             return;
         
 
         // radio de empezar a frenar. 
         Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(waypoints[_indiceWaypointActual].position, radioDeFrenado);
+        Gizmos.DrawWireSphere(_waypointsPosiciones[_indiceWaypointActual], radioDeFrenado);
 
         // Que nos dibuje el radio de detenimiento del waypoint actual
         // queremos que nos lo dibuje en la posición del waypoint, y con el tamaño del radio de tolerancia
         Gizmos.color = Color.red; // Rojo como en un semáforo, que significa detenerte completamente.
-        Gizmos.DrawWireSphere(waypoints[_indiceWaypointActual].position, radioDeToleranciaAWaypoint);
+        Gizmos.DrawWireSphere(_waypointsPosiciones[_indiceWaypointActual], radioDeToleranciaAWaypoint);
 
     }
 }
